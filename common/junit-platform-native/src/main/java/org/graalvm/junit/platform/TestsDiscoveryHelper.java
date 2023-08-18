@@ -72,9 +72,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.graalvm.nativeimage.ImageInfo.PROPERTY_IMAGE_CODE_KEY;
+
 public class TestsDiscoveryHelper {
-    public static final String TESTDISCOVERY_OUTPUT = "testdiscovery.output";
-    public static final String DEBUG = "debug";
+    public static final String TESTDISCOVERY_ISOLATE_OUTPUT = "testdiscovery.isolate.output";
 
     private List<? extends DiscoverySelector> selectors;
     private Launcher launcher = LauncherFactory.create();
@@ -85,9 +86,9 @@ public class TestsDiscoveryHelper {
             throw new RuntimeException("Must set classpath roots");
         }
         List<Path> list = Arrays.stream(args[0].split(File.pathSeparator)).map(s -> Paths.get(s)).collect(Collectors.toList());
-        TestsDiscoveryHelper testsDiscoveryHelper = new TestsDiscoveryHelper(Boolean.parseBoolean(System.getProperty(DEBUG, "false")), list);
+        TestsDiscoveryHelper testsDiscoveryHelper = new TestsDiscoveryHelper(Boolean.parseBoolean(System.getProperty("debug", "false")), list);
         List<Class<?>> ret = testsDiscoveryHelper.discoverTests();
-        String outputPath = System.getProperty(TESTDISCOVERY_OUTPUT);
+        String outputPath = System.getProperty(TESTDISCOVERY_ISOLATE_OUTPUT);
         String output = ret.stream().map(c -> c.getName()).reduce((s1, s2) -> s1 + "\n" + s2).get();
         try (FileWriter fw = new FileWriter(new File(outputPath))) {
             fw.write(output);
@@ -140,15 +141,15 @@ public class TestsDiscoveryHelper {
                 args.append(debugPort).append(" ");
             }
 
-            // Use the same system properties as current Java process
+            // Use the same system properties as current Java process exception the followings
             System.getProperties().forEach((k, v) -> {
                 if (!k.equals("line.separator") && !k.equals("java.system.class.loader")
-                        && !((String) k).startsWith("jdk.module")) {
+                        && !((String) k).startsWith("jdk.module") && !k.equals(PROPERTY_IMAGE_CODE_KEY)) {
                     args.append("-D" + k + "=\"" + v + "\"").append(" ");
                 }
             });
-            args.append("-D" + TESTDISCOVERY_OUTPUT + "=" + resultFile).append(" ");
-            args.append("-D" + DEBUG + "=" + debug).append(" ");
+            args.append("-D" + TESTDISCOVERY_ISOLATE_OUTPUT + "=" + resultFile).append(" ");
+            args.append("-Ddebug=" + debug).append(" ");
             args.append("-cp").append(" ");
             String cp = classpathRoots.stream().map(p -> p.toString()).collect(Collectors.joining(File.pathSeparator));
             args.append(cp).append(" ");

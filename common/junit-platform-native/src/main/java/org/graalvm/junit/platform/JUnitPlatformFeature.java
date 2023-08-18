@@ -56,10 +56,19 @@ import java.util.function.Consumer;
 @SuppressWarnings("unused")
 public final class JUnitPlatformFeature implements Feature {
 
-    public static final boolean debug = System.getProperty(TestsDiscoveryHelper.DEBUG) != null;
+    public static final boolean debug = System.getProperty("debug") != null;
+    public static final String TESTDISCOVERY_ISOLATE_ENABLE = "testdiscovery.isolate.enable";
+    private static final boolean ENABLE_ISOLATED_TEST_DISCOVERY;
 
     private static final NativeImageConfigurationImpl nativeImageConfigImpl = new NativeImageConfigurationImpl();
     private final ServiceLoader<PluginConfigProvider> extensionConfigProviders = ServiceLoader.load(PluginConfigProvider.class);
+
+    static {
+        String isolateTestDiscoveryValue = System.getProperty(TESTDISCOVERY_ISOLATE_ENABLE, null);
+        // Enabled if it is not set, or set as true
+        ENABLE_ISOLATED_TEST_DISCOVERY = isolateTestDiscoveryValue == null ? true : Boolean.parseBoolean(isolateTestDiscoveryValue);
+    }
+
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -71,7 +80,7 @@ public final class JUnitPlatformFeature implements Feature {
         RuntimeClassInitialization.initializeAtBuildTime(NativeImageJUnitLauncher.class);
         List<Path> classpathRoots = access.getApplicationClassPath();
         List<Class<?>> discoveredTests;
-        if (Boolean.parseBoolean(System.getProperty("isolateTestDiscovery"))) {
+        if (ENABLE_ISOLATED_TEST_DISCOVERY) {
             List<String> discoveredTestNames = TestsDiscoveryHelper.launchTestDiscovery(debug, classpathRoots);
             discoveredTests = new ArrayList<>();
             for (String discoveredTestName : discoveredTestNames) {
